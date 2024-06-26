@@ -48,16 +48,16 @@ async function writeUserData() {
 (async () => {
     const botInfo = await bot.telegram.getMe();
     botUserId = botInfo.id;
-    console.log(`Bot started as @${botInfo.username} with ID ${botUserId}`);
+    console.log(`[START] Bot started as @${botInfo.username} with ID ${botUserId}`);
     await readUserData();
 })();
 
 bot.use((ctx, next) => {
     if (ctx.message && ctx.message.chat.id === Number(GROUP_CHAT_ID) && ctx.message.from.id !== botUserId) {
         if (isTextMessage(ctx.message)) {
-            console.log(`Message "${ctx.message.text}" ignored from group chat`);
+            console.info(`[INFO] Message "${ctx.message.text}" ignored from group chat`);
         } else {
-            console.log("Non-text message ignored from group chat");
+            console.info("[INFO] Non-text message ignored from group chat");
         }
         return;
     }
@@ -68,8 +68,9 @@ bot.use((ctx, next) => {
 bot.start(async (ctx) => {
     const userId = ctx.message.from.id;
     const username = ctx.message.from.username || `${ctx.message.from.first_name} ${ctx.message.from.last_name}`;
-    const welcomeMessage = `Привет! 👋 Этот бот помогает нам в <i>группе разработки маркетинга Яндекс Недвижимости</i> собирать контакты кандидатов для собеседований. 👨‍💻
-Пожалуйста, напиши буквально пару слов о себе, нам так будет легче тебя найти 👀 Можешь отправить своё резюме сейчас или после <b>Young Con</b> этому боту, мы его тоже получим.
+    const welcomeMessage = `Привет! 👋 Мы записали твой контакт ✍️. 
+Этот бот помогает нам в <i>группе разработки маркетинга Яндекс Недвижимости</i> собирать контакты кандидатов для собеседований. 👨‍💻
+Пожалуйста, напиши буквально пару слов о себе, нам так будет легче тебя найти 👀 Если хочешь, можешь отправить своё резюме сейчас или после <b>Young Con</b> этому боту, мы его тоже получим.
 
 <i>⚠️ Только проверь, что тебе по нику могут писать незнакомцы, или напиши свои контакты сюда</i>`;
 
@@ -78,6 +79,8 @@ bot.start(async (ctx) => {
         const sentMessage = await ctx.telegram.sendMessage(GROUP_CHAT_ID, `Новый #кандидат: @${username}`);
 
         usersData[userId] = { username, firstMessageId: sentMessage.message_id, messageCount: 1 };
+
+        console.log("[NEW CANDIDATE]:", usersData[userId]);
 
         await writeUserData();
 
@@ -91,7 +94,7 @@ bot.on("message", async (ctx) => {
     const userId = ctx.message.from.id;
 
     if (userId === botUserId) {
-        console.log("Ignoring message from the bot itself");
+        console.info("[INFO] Ignoring message from the bot itself");
         return;
     }
 
@@ -110,7 +113,9 @@ bot.on("message", async (ctx) => {
         await bot.telegram.copyMessage(GROUP_CHAT_ID, ctx.message.chat.id, ctx.message.message_id, {
             reply_to_message_id: usersData[userId].firstMessageId,
         } as any);
-        console.log("Message copied successfully");
+
+        ctx.reply(`Сообщение получено! ${randomEmoji()}`);
+        console.info("[INFO] Message copied successfully");
 
         usersData[userId].messageCount += 1;
 
@@ -122,11 +127,15 @@ bot.on("message", async (ctx) => {
 
 try {
     bot.launch();
-    console.log("Bot started successfully");
 } catch (error) {
     console.error("Error starting bot:", error);
 }
 
 function isTextMessage(message: Message): message is Message.TextMessage {
     return "text" in message;
+}
+
+function randomEmoji() {
+    const emojis = ["😀", "🛰", "🦜", "😊", "🐲", "🌝", "🤞", "🤘", "🤴", "🥳", "🧗", "😼"];
+    return emojis[Math.floor(Math.random() * emojis.length)];
 }
